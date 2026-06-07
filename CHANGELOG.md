@@ -6,22 +6,26 @@
 
 - **Extra data categories in `get`**: `openplantbook.get` service now accepts an `include` parameter to request extra
   data categories (e.g., `care`) from the API.
-- **Smarter caching for extra data**: cache keys now include the `include` parameter, so different include variants are
-  cached independently.
 - **AGENTS.md**: new guidance file for AI agents working in this repository.
 
 ### Changed
 
-- **Cache key structure**: cache now stores data keyed by `(species, include)` tuples instead of species strings,
-  enabling independent caching of different include variants.
-- **Cache cleanup logic**: `clean_cache` service now checks all cache entries for expiration and only removes entities
-  when no valid cache entry remains for that species.
-- **Error handling cleanup**: removed redundant `del` statements for cache cleanup on errors; added a `finally` block to
-  ensure sentinel entries are removed.
+- **Include parameter aligned with upstream v1.5.0**: `include` is parsed as a comma-separated list (whitespace
+  trimmed, duplicates removed) and sent to the API as a sorted string (e.g. `" care , poison "` → `care,poison`).
+- **Subset-based include caching**: one cache entry per species tracks which extra categories are already satisfied via
+  `_fetched_includes`. A plain `get` reuses a cached entry that already has `care`; requesting new categories (e.g.
+  `care` after a base fetch) triggers a refetch. Matches
+  [Olen/home-assistant-openplantbook v1.5.0](https://github.com/Olen/home-assistant-openplantbook/releases/tag/v1.5.0).
+- **Cache bypass**: `cache: false` clears and refetches the species entry even when all requested `include`
+  categories are already satisfied.
+- **Cache cleanup logic**: `clean_cache` iterates species entries directly (single entry per species under the new
+  model).
+- **Error handling cleanup**: cache sentinel entries are cleared on API errors; a `finally` block ensures in-flight
+  placeholders are removed when a fetch does not complete.
 - **Upload validator**: switched from `isinstance(supported_unit, (list, tuple, set))` to
   `isinstance(supported_unit, list | tuple | set)` for consistency.
-- **Tests**: added comprehensive tests for cache key function, include parameter isolation, cache bypass behavior, and
-  API parameter passing; updated existing tests to use `_cache_key` helper.
+- **Tests**: added upstream-compatible coverage for `_parse_includes`, include API params, subset caching, cache
+  bypass with `include`, and care fields on entity attributes.
 
 ## [1.5.0] — 2026-05-27
 
