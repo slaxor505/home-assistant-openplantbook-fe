@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-import os
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
@@ -31,11 +31,6 @@ from .const import (
 )
 
 TITLE = "title"
-DESCRIPTION_PLACEHOLDERS = {
-    "sensor_data_url": "https://open.plantbook.io/ui/sensor-data/",
-    "common_names_url": "https://github.com/slaxor505/OpenPlantbook-client/wiki/Plant-Common-names",
-    "apikey_url": "https://open.plantbook.io/apikey/show/",
-}
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,10 +67,12 @@ async def validate_input(hass: core.HomeAssistant, data: dict) -> dict[str, str]
         raise ValueError from ex
     # If any of credentials are empty
     except (KeyError, MissingClientIdOrSecret) as ex:
+        # Logs the exception object, not any credential value (false positive).
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         _LOGGER.debug("API client_id and/or client secret are invalid: %s", ex)
         raise ValueError from ex
-    except Exception as ex:
-        _LOGGER.error("Unable to connect to OpenPlantbook: %s", ex)
+    except Exception:
+        _LOGGER.exception("Unable to connect to OpenPlantbook")
         raise
 
     return {TITLE: "Openplantbook API"}
@@ -110,6 +107,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
 
             if not errors:
+                # Persist the client_id as the entry's unique_id (stable per
+                # account; also used as the entities' unique_id prefix).
+                # Single-instance is enforced by manifest `single_config_entry`,
+                # which blocks a second entry regardless of client_id.
+                await self.async_set_unique_id(user_input[CONF_CLIENT_ID])
                 # Input is valid, set data.
                 self.data = user_input
                 # Skip upgrade message for new installations
@@ -121,7 +123,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=DATA_SCHEMA,
             errors=errors,
-            description_placeholders=DESCRIPTION_PLACEHOLDERS,
+            description_placeholders={
+                "apikey_url": "https://open.plantbook.io/apikey/show/"
+            },
         )
 
     async def async_step_upload(
@@ -148,7 +152,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="upload",
             data_schema=UPLOAD_SCHEMA,
             errors=errors,
-            description_placeholders=DESCRIPTION_PLACEHOLDERS,
+            description_placeholders={
+                "sensor_data_url": "https://open.plantbook.io/ui/sensor-data/",
+                "common_names_url": "https://github.com/slaxor505/OpenPlantbook-client/wiki/Plant-Common-names",
+            },
         )
 
 
@@ -215,7 +222,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(data_schema),
             errors=self.errors,
-            description_placeholders=DESCRIPTION_PLACEHOLDERS,
+            description_placeholders={
+                "sensor_data_url": "https://open.plantbook.io/ui/sensor-data/",
+                "common_names_url": "https://github.com/slaxor505/OpenPlantbook-client/wiki/Plant-Common-names",
+            },
         )
 
     async def validate_input(self, user_input: dict) -> bool:
@@ -230,10 +240,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return True
         download_path = user_input.get(FLOW_DOWNLOAD_PATH)
         # If path is relative, we assume relative to Home Assistant config dir
-        if not os.path.isabs(download_path):
+        if not Path(download_path).is_absolute():
             download_path = self.hass.config.path(download_path)
 
-        if not os.path.isdir(download_path):
+        if not await self.hass.async_add_executor_job(Path(download_path).is_dir):
             _LOGGER.error(
                 "Download path %s is invalid",
                 download_path,

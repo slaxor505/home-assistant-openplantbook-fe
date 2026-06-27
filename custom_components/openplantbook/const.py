@@ -5,9 +5,14 @@ PLANTBOOK_BASEURL = "https://open.plantbook.io/api/v1"
 ATTR_ALIAS = "alias"
 ATTR_PLANT_INSTANCE = "plant_instance"
 ATTR_SPECIES = "species"
-ATTR_INCLUDE = "include"
 ATTR_API = "api"
+
+# hass.data[DOMAIN] keys for the entity layer
+DATA_COMPONENT = "component"
+DATA_SEARCH_ENTITY = "search_entity"
+DATA_SPECIES_ENTITIES = "species_entities"
 ATTR_HOURS = "hours"
+ATTR_INCLUDE = "include"
 ATTR_IMAGE = "image_url"
 CACHE_TIME = 24
 
