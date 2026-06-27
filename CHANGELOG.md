@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.0.1] — 2026-06-27
+
+### Added (from upstream v1.6.0)
+
+- **Real Home Assistant entities**: `openplantbook.search_result` and the per-species `openplantbook.<species>` results are now proper registered entities (backed by `EntityComponent`) with stable unique IDs, instead of ad-hoc states. They now appear in the entity registry.
+- **Automatic entity cleanup**: per-species entities are purged from the registry when their cache entry expires.
+- **Single-instance enforcement**: only one OpenPlantbook config entry is allowed, and the config entry is assigned a stable `unique_id`.
+- **Tooling**: upstream Dependabot config, expanded ruff ruleset, and manifest dependency monitoring (PyPI freshness + HA-core guard).
+
+### Upgrade notes
+
+- **Upgrading from 1.5.1**: because search/get results are now **real entities**, their registry representation changes. Templates and automations that read the `openplantbook.search_result` and `openplantbook.<species>` states continue to work, but the entities now appear in the entity registry and are subject to single-instance enforcement and automatic expiry cleanup. Review any dashboards that referenced the previous ad-hoc states.
+
 ## [1.5.1] — 2026-05-28
 
 ### Added

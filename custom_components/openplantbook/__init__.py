@@ -289,6 +289,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
                 del hass.data[DOMAIN][ATTR_SPECIES][species]
                 raise
+            finally:
+                # Safety net: if the in-flight sentinel ({}) is still present
+                # (for example an unexpected error escaped the handlers above),
+                # remove it so it doesn't poison the cache and force later calls
+                # to block on the wait-loop until the integration is reloaded.
+                if hass.data[DOMAIN][ATTR_SPECIES].get(species) == {}:
+                    del hass.data[DOMAIN][ATTR_SPECIES][species]
 
             if plant_data:
                 _LOGGER.debug("Got data for %s", species)
@@ -351,7 +358,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 else:
                     existing_entity.async_update_data(plant_data)
                 return plant_data
-            del hass.data[DOMAIN][ATTR_SPECIES][species]
             return {}
         if OPB_PID not in hass.data[DOMAIN][ATTR_SPECIES][species]:
             # If more than one "get_plant" is triggered for the same species, we wait for up to

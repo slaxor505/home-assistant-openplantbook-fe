@@ -12,8 +12,8 @@ The goal of this fork is to stay aligned with Open Plantbook features, keep thin
 
 ## 📑 Table of Contents
 
-- [🌿 OpenPlantbook Integration for Home Assistant](#-openplantbook-integration-for-home-assistant)
-  - [🆕 What's New](#-whats-new)
+- [🌿 Founder-Edition of OpenPlantbook Integration for Home Assistant](#-founder-edition-of-openplantbook-integration-for-home-assistant)
+  - [🆕 What's New](#-whats-new-in-version-16)
   - [📦 Installation](#-installation)
   - [🔧 Setup](#-setup)
   - [⚙️ Configuration Options](#️-configuration-options)
@@ -25,6 +25,14 @@ The goal of this fork is to stay aligned with Open Plantbook features, keep thin
   - [📡 Actions (Service Calls)](#-actions-service-calls)
 
 ---
+
+## 🆕 What's New in version 1.6.0.1
+
+- **Real Home Assistant entities** — `openplantbook.search_result` and the per-species `openplantbook.<species>` results are now proper registered entities (with stable unique IDs) instead of ad-hoc states. They appear in the entity registry, and per-species entities are automatically cleaned up when their cache entry expires. Existing templates and automations that read these states keep working. Synced from [upstream v1.6.0](https://github.com/Olen/home-assistant-openplantbook/releases/tag/v1.6.0).
+- **Single instance** — only one OpenPlantbook integration entry is allowed per Home Assistant.
+
+> [!NOTE]
+> Upgrading from 1.5.1: search/get results are now real entities. Your existing automations and dashboard templates continue to work, but the entities now show up in the entity registry. See the [CHANGELOG](./CHANGELOG.md) for details.
 
 ## 🆕 What's New in version 1.5.1
 
@@ -48,9 +56,17 @@ The goal of this fork is to stay aligned with Open Plantbook features, keep thin
 
 ### Via HACS *(recommended)*
 
-1. Add this repo as a [Custom Repository](https://hacs.xyz/docs/faq/custom_repositories/) with type **Integration**
-2. Click **Download** in the "OpenPlantbook" card in HACS
-3. Restart Home Assistant
+This integration is available in the **default HACS store** — no custom repository needed.
+
+1. Open **HACS** in Home Assistant
+2. Search for **OpenPlantbook** and open its card
+3. Click **Download**
+4. Restart Home Assistant
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=slaxor505&repository=home-assistant-openplantbook&category=integration)
+
+> [!TIP]
+> To install a pre-release (e.g. a `-beta` version), open the OpenPlantbook card in HACS, click the three-dot menu, and enable **Show beta versions** before downloading.
 
 ### Manual Installation
 
@@ -201,7 +217,7 @@ data:
 |-----------|----------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `species` | yes | — | Exact `pid` of the species                                                                                                                                                                                                                                   |
 | `include` | no | — | Comma-separated extra data categories (e.g., `care`). If omitted, extra categories are not included. See [API docs](https://open.plantbook.io/api/v1/plant/detail/acer%20pseudoplatanus/?include=*) for supported categories |
-| `cache`   | no | `true` | Set to `false` to bypass the cache and fetch fresh data from the API. **Cache entries are keyed by `species` + `include`**, so the same species with different `include` values are cached independently. Bypassing clears only the matching variant. |
+| `cache`   | no | `true` | Set to `false` to bypass the cache and force a fresh fetch from the API. Each species has a **single** cache entry that records which `include` categories it already holds; requesting a category it doesn't yet have triggers a refetch. |
 
 The result is stored as a Home Assistant state entity. Read it in Jinja templates:
 

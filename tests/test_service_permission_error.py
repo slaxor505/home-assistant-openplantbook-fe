@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -45,7 +46,7 @@ async def test_get_service_handles_permission_error_from_api(hass):
 
 
 @pytest.mark.asyncio
-async def test_get_service_handles_permission_error_when_writing_image(hass):
+async def test_get_service_handles_permission_error_when_writing_image(hass, tmp_path):
     plant_data = {
         OPB_PID: "capsicum annuum",
         OPB_DISPLAY_PID: "Capsicum annuum",
@@ -61,21 +62,30 @@ async def test_get_service_handles_permission_error_when_writing_image(hass):
     resp.read = AsyncMock(return_value=b"image")
     websession.get = AsyncMock(return_value=resp)
 
+    # The integration writes images via Path.open(), so patch that (not the
+    # built-in open). Only fail the image write itself, letting unrelated
+    # Path.open() calls during setup work normally.
+    real_path_open = Path.open
+
+    def fake_path_open(self, *args, **kwargs):
+        if str(self).endswith("capsicum.jpg"):
+            raise PermissionError("no permission")
+        return real_path_open(self, *args, **kwargs)
+
     with (
         patch("custom_components.openplantbook.OpenPlantBookApi", return_value=api),
         patch(
             "custom_components.openplantbook.async_get_clientsession",
             return_value=websession,
         ),
-        patch("custom_components.openplantbook.os.path.isfile", return_value=False),
-        patch("builtins.open", side_effect=PermissionError("no permission")),
+        patch("custom_components.openplantbook.Path.open", new=fake_path_open),
     ):
         entry = MockConfigEntry(
             domain=DOMAIN,
             data={CONF_CLIENT_ID: "client", CONF_CLIENT_SECRET: "secret"},
             options={
                 FLOW_DOWNLOAD_IMAGES: True,
-                FLOW_DOWNLOAD_PATH: "C:\\tmp",
+                FLOW_DOWNLOAD_PATH: str(tmp_path),
             },
         )
         entry.add_to_hass(hass)
